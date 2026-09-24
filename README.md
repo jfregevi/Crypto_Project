@@ -2,13 +2,13 @@
 
 This repository presents my contribution to a quantitative research project completed during my exchange semester at **EPFL** (*Financial Applications of Blockchains and Distributed Ledgers* course). 
 
-While the broader team report covers other aspects of the pool, my work is focused on **Module 5**: the theoretical derivation of LP Greeks, building the data pipeline from Hyperliquid, and backtesting discrete delta-hedging strategies to mitigate Impermanent Loss (IL).
+While the broader team report ([`Crypto_Project.pdf`](./Crypto_Project.pdf)) covers other aspects of the pool, my work is focused on **Module 5**: the theoretical derivation of LP Greeks, building the data pipeline from Hyperliquid, and backtesting discrete delta-hedging strategies to mitigate Impermanent Loss (IL).
 
 ---
 
 ## Module 5
 
-The implementation and analysis in `hedge_backtest.ipynb` cover:
+The implementation and analysis in [`hedge_backtest.ipynb`](./hedge_backtest.ipynb) cover:
 
 ### 1. Theoretical Greeks Derivation
 * **LP Payoff Modeling:** Modeled the terminal payoff curve of concentrated liquidity positions as a short-gamma profile (analogous to a covered call / short put structure).
