@@ -1,40 +1,52 @@
-# Uniswap V3 Liquidity Provision & Dynamic Delta-Hedging
+# Dynamic Hedging of Impermanent Loss in Uniswap V3
 
-Financial Engineering and decentralized market microstructure research project conducted at **EPFL** (M.Sc. in Financial Engineering — *Financial Applications of Blockchains and Distributed Ledgers*, 2026).
+This repository presents my contribution to a quantitative research project completed during my exchange semester at **EPFL** (*Financial Applications of Blockchains and Distributed Ledgers* course). 
 
-This repository examines concentrated liquidity dynamics in the **Uniswap V3 USDC/WETH 0.05%** pool (`0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640`) across a six-month bear market (October 2025 – March 2026, $\sim -51\%$ ETH drop), and backtests a discrete delta-hedging strategy using **Hyperliquid** perpetual futures.
+While the broader team report covers other aspects of the pool, my work is focused on **Module 5**: the theoretical derivation of LP Greeks, building the data pipeline from Hyperliquid, and backtesting discrete delta-hedging strategies to mitigate Impermanent Loss (IL).
 
-## 📁 Repository Structure
+---
 
+## Module 5
+
+The implementation and analysis in `hedge_backtest.ipynb` cover:
+
+### 1. Theoretical Greeks Derivation
+* **LP Payoff Modeling:** Modeled the terminal payoff curve of concentrated liquidity positions as a short-gamma profile (analogous to a covered call / short put structure).
+* **Delta Derivation:** Proved analytically that the position delta equals the exact physical token inventory held:
+  $$\Delta_{LP}(p) = \frac{\partial V_{LP}}{\partial p} = x(p) = L \left( \frac{1}{\sqrt{p}} - \frac{1}{\sqrt{p_b}} \right)$$
+
+* **Gamma Risk:** Derived the second derivative:
+  $$\Gamma_{LP} = -\frac{L}{2p^{3/2}}$$
+  confirming that narrower ranges require a much higher liquidity density ($L$), creating extreme local negative gamma risk.
+
+### 2. Hyperliquid Market Data Pipeline
+* Extracted hourly OHLCV perpetual price candles via the Hyperliquid REST API.
+* Handled the 500-record API pagination limit to download continuous funding rate histories.
+* Solved timestamp alignment issues (sub-second offsets) by flooring series to hourly intervals (`.dt.floor('h')`) to build a clean joint dataset.
+
+### 3. Delta-Hedging Backtest & Results
+* **Setup:** Simulated an overlay shorting $\vert{}\Delta_{LP}\vert{}$ ETH on Hyperliquid perpetuals for 5 representative ranges (P1 to P5) across 3 rebalancing frequencies (1h, 4h, 24h) over a period where ETH dropped ~53%.
+* **Key Findings:**
+  * **Frequency vs. Slippage Trade-off:** High-frequency rebalancing (1h) minimizes residual IL drift but suffers severe fee drag (0.045% taker fee) and funding drag.
+  * **Optimal Net PnL:** For narrower positions, a 24h rebalancing interval yielded the highest Net Hedge PnL (up to ~$43k on a $100k notional), proving that transaction cost management outweighs micro-drift protection.
+  * **Limits of Linear Hedging:** Perpetual futures neutralize first-order directional exposure ($\Delta$) but leave the structural negative $\Gamma$ unhedged when spot exits the active range.
+
+---
+
+## Repository Structure
+
+```text
+├── hedge_backtest.ipynb      # Notebook of module 5 (Greeks, API pipeline, backtest)
+├── Crypto_Project.pdf        # Joint final research report
+├── Images/                   # Generated payoff and backtest performance plots
+├── perp_prices.parquet       # Hourly ETH perpetual prices (Hyperliquid)
+├── funding_rates.parquet     # Hourly funding rates (Hyperliquid)
+└── hedge_results.parquet     # Hourly PnL and residual risk backtest outputs
 ```
-├── Crypto_Project.pdf        # Complete research report (Modules 1 to 5)
-├── hedge_backtest.ipynb      # Final Delta-Hedging backtesting notebook (Module 5)
-├── Images/                   # Generated charts and payoff visualisations
-├── perp_prices.parquet       # Hourly OHLCV candle data (ETH-PERP on Hyperliquid)
-├── funding_rates.parquet     # Historical hourly funding rate records
-└── hedge_results.parquet     # Hourly backtest output for all 15 hedging variants
-```
 
-## 🔬 Research Summary
+---
 
-1. **On-Chain Data Extraction (Module 1):** Full reconstruction of contract state from deployment block using an Ethereum archive node, validating over 1,000,000 swap events and daily tick-level liquidity snapshots.
-2. **Liquidity Distribution Analysis (Module 2):** TVL decomposition (*In-Range* vs. *Out-of-Range*) and liquidity concentration dynamics (ILR and L-HHI metrics).
-3. **Execution Cost & Slippage Simulation (Module 3):** Implementation and validation of an exact tick-by-tick Uniswap V3 swap engine, price impact power-law regression, and effective spread drift correction.
-4. **Liquidity Provision Analytics (Module 4):** Evaluation of 5 synthetic \$100,000 LP profiles ($\pm 0.1\%$ to *Full Range*). Highlights the paradox of concentrated liquidity: high fee leverage during in-range intervals, but rapid drift to 100% WETH and deep impermanent loss under adverse trends.
-5. **Dynamic Delta Hedging (Module 5):** Proof of the LP position's structural short gamma exposure ($\Gamma_{LP} < 0$) and the equivalence $\Delta_{LP} = x(p)$. Backtest of a short perp hedge on Hyperliquid across 15 configurations (5 ranges $\times$ 3 rebalancing frequencies: 1h, 4h, 24h) factoring in 0.045% taker fees and funding rate cash flows.
-
-## 📊 Key Findings
-
-* **Tracking Precision vs. Fee Drag:** Frequent rebalancing (1h) minimizes residual impermanent loss ($\pm 15\%$), but execution costs and funding payments degrade net PnL. In contrast, 24h rebalancing yields the highest final net profit despite significant intra-day delta drift.
-* **Economies of Scale:** Rebalancing fee drag severely impairs viability for retail-scale capital; a minimum portfolio size (e.g., \$100k+) is necessary for the strategy to be profitable.
-* **Funding Tailwinds:** Despite ETH's prolonged bear market, perpetual funding rates remained predominantly positive due to persistent demand for leveraged longs, creating a net yield for the short hedger.
-
-## 🚀 Quickstart
-
-Install the required dependencies:
+## Quick Start
 
 ```bash
 pip install pandas numpy matplotlib seaborn pyarrow requests
-```
-
-Open and run `hedge_backtest.ipynb` in your preferred Jupyter or VS Code environment.
